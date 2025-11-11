@@ -1,7 +1,8 @@
 import os
 import logging
 from flask import Flask, request
-import telegram
+from telegram import Bot
+from telegram.ext import Dispatcher, MessageHandler, filters
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
@@ -12,25 +13,26 @@ app = Flask(__name__)
 
 # Получаем токен из переменных окружения
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-bot = telegram.Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN)
+dispatcher = Dispatcher(bot, None, workers=0)
+
+# Обработчик всех сообщений
+async def echo(update, context):
+    chat_id = update.message.chat.id
+    user_id = update.message.from_user.id
+    
+    response_text = f"👋 Твой ID: `{user_id}`\nID чата: `{chat_id}`"
+    await update.message.reply_text(response_text, parse_mode='Markdown')
+
+# Добавляем обработчик
+dispatcher.add_handler(MessageHandler(filters.ALL, echo))
 
 # Обработчик вебхука от Telegram
 @app.route('/webhook', methods=['POST'])
 def webhook():
     if request.method == "POST":
-        update = telegram.Update.de_json(request.get_json(force=True), bot)
-        
-        chat_id = update.message.chat.id
-        user_id = update.message.from_user.id
-        text = update.message.text
-        
-        logger.info(f"Получено сообщение: {text} от пользователя {user_id}")
-        
-        # Если пользователь отправил /start или любое сообщение
-        if text:
-            response_text = f"👋 Твой ID: `{user_id}`\nID чата: `{chat_id}`"
-            bot.send_message(chat_id=chat_id, text=response_text, parse_mode='Markdown')
-        
+        update = Update.de_json(request.get_json(force=True), bot)
+        dispatcher.process_update(update)
         return 'ok'
 
 # Устанавливаем вебхук при запуске
