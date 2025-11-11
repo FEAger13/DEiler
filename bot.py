@@ -1,7 +1,7 @@
 import os
 import logging
 from flask import Flask, request
-from telegram import Bot
+from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, filters
 
 # Настраиваем логирование
@@ -29,10 +29,10 @@ dispatcher.add_handler(MessageHandler(filters.ALL, echo))
 
 # Обработчик вебхука от Telegram
 @app.route('/webhook', methods=['POST'])
-def webhook():
+async def webhook():
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True), bot)
-        dispatcher.process_update(update)
+        await dispatcher.process_update(update)
         return 'ok'
 
 # Устанавливаем вебхук при запуске
